@@ -17,7 +17,15 @@ docker compose up --build
 
 ## 主链
 
-配置投影流 → 读取 CDC 夹具并按 seq 应用到投影表 → 批次计数与快照互证
+配置投影流 → 领取带过期时间的流租约 → 读取 CDC 夹具并按 seq 应用到投影表 → 栅栏提交批次/水位 →
+快照与租约账本互证
+
+开跑互斥已升级为**租约**（过期 + 心跳续租 + 抢占/回收 + 提交栅栏），详见
+[docs/07-lease-preempt.md](docs/07-lease-preempt.md)。
+租约内同流第二趟一律拒绝；进程崩溃留下 `pending` 批次后，到期可按策略抢占或回收，
+旧批的迟到提交返回 `FENCED` 且不改投影/水位。
+
+演示入口：前端「租约台」 http://localhost:5400/leases 。
 
 ## 种子投影流
 
@@ -30,6 +38,12 @@ docker compose up --build
 ## 技术栈
 
 Python 3.12 + FastAPI + SQLite；Vue 3 + Vite + Nginx。
+
+## 测试
+
+```bash
+cd backend && python -m pytest -q
+```
 
 ## 0-1 切口（未实现，见出题规划）
 
